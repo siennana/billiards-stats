@@ -3,44 +3,33 @@ import { StyleSheet, View, Text, Button, Alert } from "react-native";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "@/firebase"; // adjust path if different
 import { BaseGame } from "@/models/Game.ts";
+import GameView from '@/components/game/GameView.tsx';
 
 export default function TabThreeScreen() {
   const [shotsMissed, setShotsMissed] = useState(0);
   const [showFinalStats, setShowFinalStats] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
-  const [timerActive, setTimerActive] = useState(false);
   const [elapsed, setElapsed] = useState('');
-  const [game, setGame] = useState<BaseGame | null>(new BaseGame());
+  const [game, setGame] = useState<BaseGame>(new BaseGame(['bleh']));
 
   const incMisses = () => {
     game.shotsMissed++;
     setShotsMissed(game.shotsMissed);
   }
-  const onStart = () => {
-    setGame(new BaseGame());
-    setShotsMissed(0);
-    setElapsed('');
+  const onStart = (playerIds: string[]) => {
+    //game.startTimer();
+    //game.shotsMissed = 0;
+    setShotsMissed(game.shotsMissed);
     setShowFinalStats(false);
     setGameStarted(true);
-    setTimerActive(true);
   }
   const onDone = () => {
-    setTimerActive(false);
+    //game.stopTimer();
     setShowFinalStats(true);
   }
-  const handleSaveGame = () => {
-  /*
-    try {
-      await setDoc(doc(db, "userStats", user_id), {
-        count,
-        timestamp: Date.now(),
-      });
-      Alert.alert("Success", "Data saved to Firebase!");
-    } catch (error) {
-      console.error("Error writing to Firebase", error);
-      Alert.alert("Error", "Could not write to Firebase.");
-    }
-    */
+  const onSaveGame = async () => {
+    //const id = await game.save();
+    console.log(id);
   }
 
   // 🕒 Update elapsed time every second
@@ -54,8 +43,11 @@ export default function TabThreeScreen() {
       <Text>Misses: {shotsMissed}</Text>
       <Text>Total Time: {elapsed}</Text>
       <Button title="Play Again" onPress={onStart}></Button>
-      <Button title="Save Game"></Button>
+      <Button title="Save Game" onPress={onSaveGame}></Button>
     </View>
+
+  const newPlayView =
+    <GameView playerIds={['p0', 'p1']}/>
 
   const playView = 
     <View style={styles.viewStyle}>
@@ -67,8 +59,10 @@ export default function TabThreeScreen() {
 
   const startView = 
     <View style={styles.viewStyle}>
-      <Text style={styles.header}>Challenge: Make Balls</Text>
-      <Button title="Start Game" onPress={onStart}/>
+      <Text style={styles.header}>Practice Rack</Text>
+      <Button title="Start Game" onPress={() => onStart(['p1'])} />
+      <Text style={styles.header}>8 Ball</Text>
+      <Button title="Start Game" onPress={() => onStart(['p1', 'p2'])} />
     </View>
 
   let mainView;
@@ -77,7 +71,7 @@ export default function TabThreeScreen() {
   } else if (showFinalStats) {
     mainView = finalStatsView;
   } else {
-    mainView = playView;
+    mainView = newPlayView;
   }
 
 
@@ -85,7 +79,8 @@ export default function TabThreeScreen() {
     <View style={styles.viewStyle}>
       {mainView}
     </View>
-  );}
+  );
+}
 
 const styles = StyleSheet.create({
   viewStyle: {
