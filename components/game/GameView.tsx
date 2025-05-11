@@ -6,20 +6,39 @@ import { v4 as uuid } from 'uuid';
 
 type GameViewProps = {
   playerIds: string[];
+  onGameEnd: (game: BaseGame) => void;
 }
 
-export default function GameView({playerIds}: GameViewProps) {
+const defaultStats: Pick<Turn, 'makes', 'misses'> = {
+  makes: 0,
+  misses: 0,
+}
+
+export default function GameView({playerIds, onGameEnd}: GameViewProps) {
   const [game, setGame] = useState<BaseGame>(new BaseGame(playerIds));
-  const [currPId, setCurrPId] = useState(playerIds[0] ?? '');
+  const [currPId, setCurrPId] = useState(game.currPlayerId);
   const [currTurn, setCurrTurn] = useState<Turn>({
     id: uuid(),
-    playerId: playerIds[0] ?? '',
+    playerId: currPId,
     makes: 0,
     misses: 0,
   });
+  const [totalBallsMade, setTotalBallsMade] = useState(0);
+
+  const updateTurn = (pId: string) => {
+    setCurrTurn({
+      id: uuid(),
+      playerId: pId,
+      ...defaultStats
+    })
+  }
 
   const onEndTurn = () => {
-    console.log(`${currPId} turn end`);
+    game.turns = [...game.turns, currTurn]; // add turn to game
+    game.updateCurrentPlayer(); // next player turn
+    setCurrPId(game.currPlayerId);  // update current player in local state
+    updateTurn(game.currPlayerId);  // initialize next turn and update local state
+    setTotalBallsMade(game.playerMakes);
   }
 
   const onUpdateStats = (update: Partial<Pick<Turn, 'makes', 'misses'>>) => {
@@ -30,14 +49,20 @@ export default function GameView({playerIds}: GameViewProps) {
     });
   }
 
+  const endGame = () => {
+    onGameEnd(game);
+  }
+
   const mainView = 
     <View style={styles.viewStyle}>
      <Text style={styles.header}>Player: {currPId}</Text>
+     <Text style={styles.header}>Total Balls Made: {totalBallsMade}</Text>
      <Text style={styles.header}>Makes: {currTurn.makes}</Text>
      <Button title="Make" onPress={() => onUpdateStats({makes: 1})} />
      <Text style={styles.header}>Misses: {currTurn.misses}</Text>
      <Button title="Miss" onPress={() => onUpdateStats({misses: 1})} />
      <Button title="End Turn" onPress={onEndTurn} />
+     <Button title="End Game" onPress={endGame} />
     </View>
 
   return (

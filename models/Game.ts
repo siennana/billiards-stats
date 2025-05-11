@@ -1,17 +1,14 @@
 import { getFirestore, collection, addDoc } from 'firebase/firestore';
-import { app } from '../firebase'; // Import your initialized app instance
-import { Turn } from '../types/turn.ts';
+import { app } from '@/firebase.ts'; // Import your initialized app instance
+import { Turn } from '@/types/turn.ts';
 import { v4 as uuid } from 'uuid';
 
 const db = getFirestore(app); // Get the Firestore service instance
-// Now you can use 'db' to read/write data
-
 
 export class BaseGame {
   private id: string;
   public playerIds: string[];
-  public currentPlayerId: string;
-  public shotsMissed: number;
+  public currPlayerId: string;
   private timeStart: number = 0;
   private timeEnd: number = 0;
   public turns: Turn[] = [];
@@ -20,9 +17,8 @@ export class BaseGame {
 
   constructor(playerIds: string[]) {
     this.id = uuid();
-    this.shotsMissed = 0;
     this.playerIds = playerIds;
-    this.currentPlayerId = playerIds[0];
+    this.currPlayerId = playerIds[0];
   }
 
   get elapsedTime(): number {
@@ -31,6 +27,18 @@ export class BaseGame {
 
   get formattedTime(): string {
     return `${this.elapsedTime}`;
+  }
+
+  get playerMakes(): number {
+    return this.turns
+      .filter(turn => turn.playerId === this.currPlayerId)
+      .reduce((sum, turn) => sum + turn.makes, 0);
+  }
+
+  updateCurrentPlayer() {
+    const currIndex = this.playerIds.indexOf(this.currPlayerId);
+    const nextIndex = (currIndex + 1) % this.playerIds.length;
+    this.currPlayerId = this.playerIds[nextIndex];
   }
 
   startTimer() {
@@ -52,24 +60,26 @@ export class BaseGame {
 
   toJSON() {
     return {
-      gameId: this.id,
-      timestamp: this.timeStart,
-      elapsedTime: this.elapsedTime,
-      shotsMissed: this.shotsMissed,
+      id: this.id,
+      //timestamp: this.timeStart,
+      //elapsedTime: this.elapsedTime,
+      turns: this.turns,
     }
   }
 
-  async save(userId = 'test_user'): Promise<string> {
-    console.log(db);
-    const collectionsRef = collection(db, 'games');
-    const docRef = await addDoc(
-      collectionsRef,
-      {
-        test: 'test'
-      }
-    );
-    console.log(docRef.id);
-    return docRef.id;
+  async save(): Promise<string> {
+    try {
+      console.log(db);
+      const collectionsRef = collection(db, 'games');
+      const docRef = await addDoc(
+        collectionsRef,
+        this.toJSON(),
+      );
+      console.log(docRef.id);
+      return docRef.id;
+    } catch(error: any) {
+      console.log(error);
+    }
   }
 
 }
