@@ -1,21 +1,23 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, Button } from 'react-native';
+import { ThemedText } from '@/components/ThemedText';
 import { BaseGame } from '@/models/Game.ts';
-import { Turn } from '@/types/turn.ts';
+import { Turn, ShotType } from '@/types/turn.ts';
 import { v4 as uuid } from 'uuid';
+import { defaultStats } from '@/constants/defaults/game.ts';
 
 type GameViewProps = {
   playerIds: string[];
   onGameEnd: (game: BaseGame) => void;
 }
 
-const defaultStats: Pick<Turn, 'makes', 'misses'> = {
+const _defaultStats: Pick<Turn, 'makes', 'misses'> = {
   makes: 0,
   misses: 0,
 }
 
-export default function GameView({playerIds, onGameEnd}: GameViewProps) {
-  const [game, setGame] = useState<BaseGame>(new BaseGame(playerIds));
+export default function GameView(props: GameViewProps) {
+  const [game, setGame] = useState<BaseGame>(new BaseGame(props.playerIds));
   const [currPId, setCurrPId] = useState(game.currPlayerId);
   const [currTurn, setCurrTurn] = useState<Turn>({
     id: uuid(),
@@ -23,13 +25,14 @@ export default function GameView({playerIds, onGameEnd}: GameViewProps) {
     makes: 0,
     misses: 0,
   });
-  const [totalBallsMade, setTotalBallsMade] = useState(0);
+
+  console.log(game);
 
   const updateTurn = (pId: string) => {
     setCurrTurn({
       id: uuid(),
       playerId: pId,
-      ...defaultStats
+      ..._defaultStats
     })
   }
 
@@ -53,28 +56,43 @@ export default function GameView({playerIds, onGameEnd}: GameViewProps) {
     onGameEnd(game);
   }
 
-  const mainView = 
-    <View style={styles.viewStyle}>
-     <Text style={styles.header}>Player: {currPId}</Text>
-     <Text style={styles.header}>Total Balls Made: {totalBallsMade}</Text>
-     <Text style={styles.header}>Makes: {currTurn.makes}</Text>
-     <Button title="Make" onPress={() => onUpdateStats({makes: 1})} />
-     <Text style={styles.header}>Misses: {currTurn.misses}</Text>
-     <Button title="Miss" onPress={() => onUpdateStats({misses: 1})} />
-     <Button title="End Turn" onPress={onEndTurn} />
-     <Button title="End Game" onPress={endGame} />
+  const shotRecord = {
+    [ShotType.Make]: ['make'],
+    [ShotType.Miss]: ['miss'],
+    [ShotType.EndGame]: ['end game']
+  }
+
+  const shotView =
+    <View style={{ flex: 1, justifyContent: 'center' }}>
+      {Object.keys(shotRecord).map((shotKey) => (
+        <View key={shotKey} style={styles.button}>
+          <Button title={shotRecord[shotKey]} />
+        </View>
+      ))}
+    </View>
+
+  console.log(game.playerIds);
+  const playersBar = 
+    <View style={styles.playersBarContainer}>
+      {game.playerIds.map((playerId) => (
+        <View key={playerId}>
+          <ThemedText>{playerId}</ThemedText>
+        </View>
+      ))}
     </View>
 
   return (
-    <View style={styles.viewStyle}>
-      {mainView}
-    </View>
+    <View style={{ flex: 1 }}>
+      {playersBar}
+      <View style={{ flex: 1 }}>
+        {shotView}
+      </View>
+    </View> 
   );
 }
 
 const styles = StyleSheet.create({
   viewStyle: {
-    flex: 1,
     gap: 20,
     alignItems: 'center',
     justifyContent: 'center',
@@ -82,5 +100,19 @@ const styles = StyleSheet.create({
   header: {
     fontSize: 24,
     marginBottom: 20,
+  },
+  playersBarContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    height: 45,
+    borderBottomWidth: 1,
+    borderBottomColor: 'white',
+  },
+  container: {
+    flex: 1,
+  },
+  button: {
+    margin: 5,
   }
 });

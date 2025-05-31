@@ -1,25 +1,26 @@
 import { useState, useEffect } from "react";
-import { StyleSheet, View, Text, Button, Alert } from "react-native";
+import { View, Text, Button, Alert } from "react-native";
+import { ThemedText } from '@/components/ThemedText';
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "@/firebase"; // adjust path if different
 import { BaseGame } from "@/models/Game.ts";
 import GameView from '@/components/game/GameView.tsx';
+import { styles } from '@/styles/global.ts';
+
+enum ViewModes {
+  Start,
+  Play,
+  End,
+}
 
 export default function TabThreeScreen() {
   const [showFinalStats, setShowFinalStats] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
+  const [currentView, setCurrentView] = useState(ViewModes.Start);
+  const [players, setPlayers] = useState(2);
+  //const [onSave, setOnSave] = useState(() => void);
   //const [elapsed, setElapsed] = useState('');
 
-  const onStart = (playerIds: string[]) => {
-    setShowFinalStats(false);
-    setGameStarted(true);
-  }
-  const onDone = () => {
-    setShowFinalStats(true);
-  }
-  const onSaveGame = async () => {
-    console.log(id);
-  }
 
   /*
   // 🕒 Update elapsed time every second
@@ -29,52 +30,61 @@ export default function TabThreeScreen() {
   */
 
   const handleGameEnd = (game: BaseGame) => {
-    console.log(game.turns);
     game.save();
   }
 
   const finalStatsView =
     <View style={styles.viewStyle}>
-      <Text style={styles.header}>Game Review</Text>
+      <ThemedText style={styles.header}>Game Review</ThemedText>
+      <Button title="Save Game" onPress={handleGameEnd} />
     </View>
 
-  const playView =
-    <GameView playerIds={['player 1', 'player 2']} onGameEnd={handleGameEnd}/>
+  const onStart = () => {
+    setCurrentView(ViewModes.Play);
+  }
+
+  const onDone = (game: BaseGame) => {
+    setCurrentView(ViewModes.End);
+  }
 
   const startView = 
     <View style={styles.viewStyle}>
-      <Text style={styles.header}>Practice Rack</Text>
-      <Button title="Start Game" onPress={() => onStart(['player 1'])} />
-      <Text style={styles.header}>8 Ball</Text>
-      <Button title="Start Game" onPress={() => onStart(['player 1', 'player 2'])} />
+      <ThemedText style={styles.header}>8 Ball</ThemedText>
+      <ThemedText style={styles.header}>Players: </ThemedText>
+      <View style={styles.flexRow}>
+        <Button title="-" onPress={() => setPlayers(players - 1)} />
+        <ThemedText>{players}</ThemedText>
+        <Button title="+" onPress={() => setPlayers(players + 1)} />
+      </View>
+      <Button title="Start Game" onPress={onStart} />
     </View>
 
-  let mainView;
-  if (!gameStarted) {
-    mainView = startView;
-  } else if (showFinalStats) {
-    mainView = finalStatsView;
-  } else {
-    mainView = playView;
+  const getPlayerIds = () => {
+    return Array.from({length: players}, (_, i) => `player ${i + 1}`);
   }
 
+  const getGameView = () => {
+    return <GameView playerIds={getPlayerIds()} onGameEnd={onDone} />
+  }
+
+  let mainView = startView;
+  switch (currentView) {
+    case ViewModes.Start:
+      mainView = startView;
+      break;
+    case ViewModes.Play:
+      mainView = getGameView();
+      break;
+    case ViewModes.End:
+      mainView = finalStatsView;
+      break;
+    default:
+      mainView = startView;
+  }
 
   return (
-    <View style={styles.viewStyle}>
+    <View style={{ flex: 1 }}>
       {mainView}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  viewStyle: {
-    flex: 1,
-    gap: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  header: {
-    fontSize: 24,
-    marginBottom: 20,
-  }
-});
