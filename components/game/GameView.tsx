@@ -25,8 +25,7 @@ export default function GameView(props: GameViewProps) {
     makes: 0,
     misses: 0,
   });
-
-  console.log(game);
+  const [currentView, setCurrentView] = useState('');
 
   const updateTurn = (pId: string) => {
     setCurrTurn({
@@ -57,21 +56,45 @@ export default function GameView(props: GameViewProps) {
   }
 
   const shotRecord = {
-    [ShotType.Make]: ['make'],
-    [ShotType.Miss]: ['miss'],
-    [ShotType.EndGame]: ['end game']
+    [ShotType.Make]: {
+      name: 'make',
+      children: ['make', 'bank', 'kick']
+    },
+    [ShotType.Miss]: {
+      name: 'miss',
+      children: ['miss', 'safety']
+    },
+    [ShotType.EndGame]: {
+      name: 'end game',
+      children: ['made 8 early', 'scratched on 8', 'made 8']
+    }
+  }
+
+  const getShotSelectionView = (shotType: ShotType) => {
+    return  (
+      <View style={styles.buttons}>
+        {shotRecord[shotType].children.map((child) => (
+          <Button title={child} />
+        ))}
+        <Button title='back' onPress={() => setCurrentView('')} />
+      </View>
+    );
   }
 
   const shotView =
-    <View style={{ flex: 1, justifyContent: 'center' }}>
+    <View style={styles.buttons}>
       {Object.keys(shotRecord).map((shotKey) => (
-        <View key={shotKey} style={styles.button}>
-          <Button title={shotRecord[shotKey]} />
-        </View>
+        <Button key={shotKey} title={shotRecord[shotKey].name} onPress={() => setCurrentView(shotKey)} />
       ))}
     </View>
 
-  console.log(game.playerIds);
+  let mainView = shotView;
+  if (currentView === '') {
+    mainView = shotView;
+  } else {
+    mainView = getShotSelectionView(currentView);
+  }
+
   const playersBar = 
     <View style={styles.playersBarContainer}>
       {game.playerIds.map((playerId) => (
@@ -85,7 +108,7 @@ export default function GameView(props: GameViewProps) {
     <View style={{ flex: 1 }}>
       {playersBar}
       <View style={{ flex: 1 }}>
-        {shotView}
+        {mainView}
       </View>
     </View> 
   );
@@ -112,7 +135,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  button: {
-    margin: 5,
+  buttons: {
+    flex: 1,
+    margin: '10px',
+    justifyContent: 'center',
+    gap: '10px',
   }
 });
