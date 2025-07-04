@@ -12,6 +12,8 @@ export class BaseGame {
   private timeStart: number = 0;
   private timeEnd: number = 0;
   public turns: Turn[] = [];
+  public currentTurn: Turn;
+  public playerStats: Record<string, Record<string, number>>;
   private intervalId: NodeJS.Timeout | null = null;
   onElapsedChange?: (ms: number, formatted: string) => void
 
@@ -19,13 +21,22 @@ export class BaseGame {
     this.id = uuid();
     this.playerIds = playerIds;
     this.currPlayerId = playerIds[0];
+    this.currentTurn = {
+      id: uuid(),
+      playerId: playerIds[0],
+      shots: [],
+    };
+    this.playerStats = this.playerIds.reduce((acc, id) => {
+      acc[id] = {};
+      return acc;
+    }, {});
   }
 
   get elapsedTime(): number {
     return this.timeEnd - this.timeStart;
   }
 
-  get formattedTime(): string {
+  formattedTime(): string {
     return `${this.elapsedTime}`;
   }
 
@@ -35,10 +46,45 @@ export class BaseGame {
       .reduce((sum, turn) => sum + turn.makes, 0);
   }
 
+  updatePlayerStats(playerId: string) {
+    const summary = {};
+    this.turns
+      .filter(turn => turn.playerId === playerId)
+      .forEach(turn => {
+        turn.shots.forEach(shot => {
+          if (!summary[shot.name]) {
+            summary[shot.name] = {
+              totalCount: 0,
+              type: shot.type,
+            };
+          }
+
+          summary[shot.name].totalCount += shot.count;
+        });
+      });
+    
+    this.playerStats[playerId] = summary;
+  }
+
   updateCurrentPlayer() {
     const currIndex = this.playerIds.indexOf(this.currPlayerId);
     const nextIndex = (currIndex + 1) % this.playerIds.length;
     this.currPlayerId = this.playerIds[nextIndex];
+  }
+
+  nextTurn() {
+    this.updateCurrentPlayer();
+    this.turns.push(this.currentTurn);
+    this.currentTurn = {
+      id: uuid(),
+      playerId: this.currPlayerId,
+      shots: [],
+    }
+  }
+
+  endGame() {
+    this.turns.push(this.currentTurn);
+    this.playerIds.forEach((playerId) => this.updatePlayerStats(playerId));
   }
 
   startTimer() {

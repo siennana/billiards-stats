@@ -5,6 +5,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import { auth } from '../firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 
@@ -20,6 +22,16 @@ export default function RootLayout() {
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
+      const signInTestUser = async () => {
+        try {
+          console.log('signing in...');
+          await signInWithEmailAndPassword(auth, 'sienna.kaylenb@gmail.com', 'password');
+          console.log('Signed in');
+        } catch (err) {
+          console.error('Sign-in error:', err);
+        }
+      };
+      signInTestUser();
     }
   }, [loaded]);
 
