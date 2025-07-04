@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, Button } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { BaseGame } from '@/models/Game.ts';
-import { Turn, ShotType } from '@/types/turn.ts';
+import { Turn, ShotType, Shot } from '@/types/turn.ts';
 import { v4 as uuid } from 'uuid';
 import { defaultStats } from '@/constants/defaults/game.ts';
 
@@ -11,48 +11,52 @@ type GameViewProps = {
   onGameEnd: (game: BaseGame) => void;
 }
 
-const _defaultStats: Pick<Turn, 'makes', 'misses'> = {
-  makes: 0,
-  misses: 0,
-}
-
 export default function GameView(props: GameViewProps) {
   const [game, setGame] = useState<BaseGame>(new BaseGame(props.playerIds));
   const [currPId, setCurrPId] = useState(game.currPlayerId);
-  const [currTurn, setCurrTurn] = useState<Turn>({
-    id: uuid(),
-    playerId: currPId,
-    makes: 0,
-    misses: 0,
-  });
+  const [currTurn, setCurrTurn] = useState<Turn>(game.currentTurn);
   const [currentView, setCurrentView] = useState('');
 
-  const updateTurn = (pId: string) => {
-    setCurrTurn({
-      id: uuid(),
-      playerId: pId,
-      ..._defaultStats
-    })
+  const onNextTurn = () => {
+    game.nextTurn();
+    setCurrTurn(game.currentTurn);
+    setCurrPId(game.currPlayerId);
   }
 
-  const onEndTurn = () => {
-    game.turns = [...game.turns, currTurn]; // add turn to game
-    game.updateCurrentPlayer(); // next player turn
-    setCurrPId(game.currPlayerId);  // update current player in local state
-    updateTurn(game.currPlayerId);  // initialize next turn and update local state
-    setTotalBallsMade(game.playerMakes);
-  }
+  const finalStatsView = 
+    <View style={{ flex: 1 }}>
+      <ThemedText>Final Stats</ThemedText>
+      {game.playerIds.map((playerId) => (
+        <View key={playerId}>
+          <ThemedText>{playerId}</ThemedText>
+          {Object.entries(game.playerStats[playerId]).map(([shot, stats]) => (
+            <ThemedText key={shot}>{`${shot}: ${stats.totalCount}`}</ThemedText>
+          ))};
+        </View>
+      ))}
+    </View>
 
-  const onUpdateStats = (update: Partial<Pick<Turn, 'makes', 'misses'>>) => {
-    setCurrTurn({
-      ...currTurn,
-      makes: currTurn.makes + (update.makes ?? 0),
-      misses: currTurn.misses + (update.misses ?? 0),
-    });
-  }
-
-  const endGame = () => {
-    onGameEnd(game);
+  const onRecordShot = (type: ShotType, shot: string) => {
+    const newShot: Shot = {
+      name: shot,
+      count: 1,
+      type: type
+    };
+    game.currentTurn.shots.push(newShot);
+    setCurrTurn(game.currentTurn);
+    if (Number(type) === ShotType.Make) {
+      setCurrentView('');
+    } else if (Number(type) === ShotType.Miss) {
+      setCurrentView('');
+      onNextTurn();
+    } else if (Number(type) === ShotType.EndGame) {
+      console.log(game);
+      game.endGame();
+      game.save();
+      setCurrentView('end');
+    } else {
+      console.log('error');
+    }
   }
 
   const shotRecord = {
@@ -74,7 +78,7 @@ export default function GameView(props: GameViewProps) {
     return  (
       <View style={styles.buttons}>
         {shotRecord[shotType].children.map((child) => (
-          <Button title={child} />
+          <Button key={child} title={child} onPress={() => onRecordShot(shotType, child)} />
         ))}
         <Button title='back' onPress={() => setCurrentView('')} />
       </View>
@@ -91,14 +95,18 @@ export default function GameView(props: GameViewProps) {
   let mainView = shotView;
   if (currentView === '') {
     mainView = shotView;
+  } else if (currentView === 'end') {
+    mainView = finalStatsView;
   } else {
     mainView = getShotSelectionView(currentView);
   }
+  
+  const isCurrPlayer = (playerId: string) => game.currPlayerId === playerId;
 
   const playersBar = 
     <View style={styles.playersBarContainer}>
       {game.playerIds.map((playerId) => (
-        <View key={playerId}>
+        <View key={playerId} style={[isCurrPlayer(playerId) && styles.currentPlayer]}>
           <ThemedText>{playerId}</ThemedText>
         </View>
       ))}
@@ -131,6 +139,9 @@ const styles = StyleSheet.create({
     height: 45,
     borderBottomWidth: 1,
     borderBottomColor: 'white',
+  },
+  currentPlayer: {
+    backgroundColor: 'green',
   },
   container: {
     flex: 1,
